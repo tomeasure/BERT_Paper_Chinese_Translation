@@ -12,56 +12,56 @@ BERT 的概念很简单，但实验效果很强大。它刷新了 11 个 NLP 任
 ## 1. 介绍
 语言模型预训练可以显著提高许多自然语言处理任务的效果（[Dai and Le, 2015](http://papers.nips.cc/paper/5949-semi-supervised-sequence-learning)；[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2)；[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)；[Howard and Ruder, 2018](https://arxiv.org/abs/1801.06146v5)）。这些任务包括句子级任务，如自然语言推理（[Bow-man et al., 2015](https://arxiv.org/abs/1508.05326v1)；[Williams et al., 2018](https://arxiv.org/abs/1704.05426v4)）和释义（[Dolan and Brockett, 2005](https://www.researchgate.net/publication/228613673_Automatically_constructing_a_corpus_of_sentential_paraphrases)），目的是通过对句子的整体分析来预测句子之间的关系，以及标记级任务，如命名实体识别（[Tjong Kim Sang and De Meulder, 2003](http://www.oalib.com/paper/4018980)）和 SQuAD 问答（[Rajpurkar et al., 2016](https://arxiv.org/abs/1606.05250v3)），模型需要在标记级生成细粒度的输出。
 
-现有的两种方法可以将预训练好的语言模型表示应用到下游任务中：**基于特征**的和**微调**。**基于特征的方法**，如 <u>ELMo</u> （[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2))，使用特定于任务的模型结构，其中包含预训练的表示作为附加特特征。**微调方法**，如<u>生成预训练 Transformer  (OpenAI GPT) </u>（[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）模型，然后引入最小的特定于任务的参数，并通过简单地微调预训练模型的参数对下游任务进行训练。在之前的工作中，两种方法在预训练任务中都具有相同的目标函数，即<u>使用单向的语言模型来学习通用的语言表达</u>。
+现有的两种方法可以将预训练好的语言模型表示应用到下游任务中：**基于特征**的和**微调**。**基于特征的方法**，如 *ELMo* （[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2))，使用特定于任务的模型结构，其中包含预训练的表示作为附加特特征。**微调方法**，如 *生成预训练 Transformer  (OpenAI GPT)* （[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）模型，然后引入最小的特定于任务的参数，并通过简单地微调预训练模型的参数对下游任务进行训练。在之前的工作中，两种方法在预训练任务中都具有相同的目标函数，即**使用单向的语言模型来学习通用的语言表达**。
 
-我们认为，当前的技术严重地限制了预训练表示的效果，特别是对于微调方法。主要的局限性是标准语言模型是单向的，这就限制了可以在预训练期间可以使用的模型结构的选择。例如，在 OpenAI GPT 中，作者使用了从左到右的模型结构，其中每个标记只能关注 Transformer 的自注意层中该标记前面的标记（[Williams et al., 2018](https://arxiv.org/abs/1704.05426v4)）。这些限制对于句子级别的任务来说是次优的（还可以接受），但当把基于微调的方法用来处理标记级别的任务（如 SQuAD 问答）时可能会造成不良的影响（[Rajpurkar et al., 2016](https://arxiv.org/abs/1606.05250v3)），因为在标记级别的任务下，从两个方向分析上下文是至关重要的。
+我们认为，当前的技术严重地限制了预训练表示的效果，特别是对于微调方法。**主要的局限性是标准语言模型是单向的**，这就限制了可以在预训练期间可以使用的模型结构的选择。例如，在 OpenAI GPT 中，作者使用了从左到右的模型结构，其中每个标记只能关注 Transformer 的自注意层中该标记前面的标记（[Williams et al., 2018](https://arxiv.org/abs/1704.05426v4)）。这些限制对于句子级别的任务来说是次优的（还可以接受），但当把基于微调的方法用来处理标记级别的任务（如 SQuAD 问答）时可能会造成不良的影响（[Rajpurkar et al., 2016](https://arxiv.org/abs/1606.05250v3)），因为在 *标记级别的任务下，从两个方向分析上下文是至关重要的*。
 
-在本文中，我们通过提出 BERT 改进了基于微调的方法：来自 Transformer 的双向编码器表示。受完形填空任务的启发，BERT 通过提出一个新的预训练任务来解决前面提到的单向约束：“遮蔽语言模型”（MLM masked language model）（[Tay-lor, 1953](https://www.researchgate.net/publication/232539913_Cloze_Procedure_A_New_Tool_For_Measuring_Readability)）。遮蔽语言模型从输入中随机遮蔽一些标记，目的是仅根据被遮蔽标记的上下文来预测它对应的原始词汇的 id。与从左到右的语言模型预训练不同，MLM 目标允许表示融合左右上下文，这允许我们预训练一个深层双向 Transformer。除了遮蔽语言模型之外，我们还提出了一个联合预训练文本对来进行“下一个句子预测”的任务。
+在本文中，我们通过提出 BERT 改进了基于微调的方法：**来自 Transformer 的双向编码器表示**。受完形填空任务的启发，BERT 通过提出一个新的预训练任务来 *解决前面提到的单向约束*：**“遮蔽语言模型”**（MLM masked language model）（[Tay-lor, 1953](https://www.researchgate.net/publication/232539913_Cloze_Procedure_A_New_Tool_For_Measuring_Readability)）。遮蔽语言模型从输入中随机遮蔽一些标记，目的是仅根据被遮蔽标记的上下文来预测它对应的原始词汇的 id。与从左到右的语言模型预训练不同，MLM 目标允许表示融合左右上下文，这允许我们预训练一个深层双向 Transformer。除了遮蔽语言模型之外，我们还提出了一个**联合预训练文本对**来进行“下一个句子预测”的任务。
 
 本文的贡献如下：
-+ 我们论证了双向预训练对语言表征的重要性。与 [Radford et al., 2018](https://blog.openai.com/language-unsupervised/) 使用单向语言模型进行预训练不同，BERT 使用遮蔽语言模型来实现预训练深层双向表示。这也与 [Peters et al., 2018](https://arxiv.org/abs/1802.05365v2) 的研究形成了对比，他们使用了一个由左到右和由右到左的独立训练语言模型的浅层连接。
-+ 我们表明，预训练的表示消除了许多特定于任务的高度工程化的的模型结构的需求。BERT 是第一个基于微调的表示模型，它在大量的句子级和标记级任务上实现了最先进的性能，优于许多特定于任务的结构的模型。
++ 我们**论证了双向预训练对语言表征的重要性**。与 [Radford et al., 2018](https://blog.openai.com/language-unsupervised/) 使用单向语言模型进行预训练不同，BERT 使用遮蔽语言模型来实现预训练深层双向表示。这也与 [Peters et al., 2018](https://arxiv.org/abs/1802.05365v2) 的研究形成了对比，他们使用了一个由左到右和由右到左的独立训练语言模型的浅层连接。
++ 我们表明，**预训练的表示消除了许多特定于任务的高度工程化的的模型结构的需求**。BERT 是第一个基于微调的表示模型，它在大量的句子级和标记级任务上实现了最先进的性能，优于许多特定于任务的结构的模型。
 + BERT 为 11 个 NLP 任务提供了最先进的技术。我们还进行大量的消融研究，证明了我们模型的双向本质是最重要的新贡献。代码和预训练模型将可在 [goo.gl/language/bert](https://github.com/google-research/bert) 获取。
 
 ## 2 相关工作
 预训练通用语言表示有很长的历史，我们将在本节简要回顾最流行的方法。
 
 ### 2.1 基于特征的方法
-几十年来，学习广泛适用的词语表示一直是一个活跃的研究领域，包括非神经网络学领域（[Brown et al., 1992](https://dl.acm.org/citation.cfm?id=176316);[](http://academictorrents.com/details/f4470eb8bc3a6f697df61bde319fd56e3a9d6733);[Blitzer et al., 2006](https://dl.acm.org/citation.cfm?id=1610094)）和神经网络领域（[Collobert and Weston, 2008](https://www.researchgate.net/publication/200044432_A_Unified_Architecture_for_Natural_Language_Processing)；[Mikolov et al., 2013](https://arxiv.org/abs/1310.4546v1)；[Pennington et al., 2014](http://www.aclweb.org/anthology/D14-1162)）方法。经过预训练的词嵌入被认为是现代 NLP 系统的一个不可分割的部分，词嵌入提供了比从头开始学习的显著改进（[Turian et al., 2010](https://www.researchgate.net/publication/220873681_Word_Representations_A_Simple_and_General_Method_for_Semi-Supervised_Learning)）。
+几十年来，学习广泛适用的词语表示一直是一个活跃的研究领域，包括非神经网络学领域（[Brown et al., 1992](https://dl.acm.org/citation.cfm?id=176316);[](http://academictorrents.com/details/f4470eb8bc3a6f697df61bde319fd56e3a9d6733);[Blitzer et al., 2006](https://dl.acm.org/citation.cfm?id=1610094)）和神经网络领域（[Collobert and Weston, 2008](https://www.researchgate.net/publication/200044432_A_Unified_Architecture_for_Natural_Language_Processing)；[Mikolov et al., 2013](https://arxiv.org/abs/1310.4546v1)；[Pennington et al., 2014](http://www.aclweb.org/anthology/D14-1162)）方法。经过预训练的词嵌入被认为是现代 NLP 系统的一个不可分割的部分，**词嵌入**提供了比从头开始学习的显著改进（[Turian et al., 2010](https://www.researchgate.net/publication/220873681_Word_Representations_A_Simple_and_General_Method_for_Semi-Supervised_Learning)）。
 
-这些方法已被推广到更粗的粒度，如句子嵌入（[Kiros et al., 2015](https://arxiv.org/abs/1506.06726v1)；[Logeswaran and Lee, 2018](https://arxiv.org/abs/1803.02893v1)）或段落嵌入（[Le and Mikolov, 2014](https://arxiv.org/abs/1405.4053v2)）。与传统的单词嵌入一样，这些学习到的表示通常也用作下游模型的输入特征。
+这些方法已被推广到更粗的粒度，如 *句子嵌入*（[Kiros et al., 2015](https://arxiv.org/abs/1506.06726v1)；[Logeswaran and Lee, 2018](https://arxiv.org/abs/1803.02893v1)）或 *段落嵌入*（[Le and Mikolov, 2014](https://arxiv.org/abs/1405.4053v2)）。与传统的单词嵌入一样，这些学习到的表示 *通常也用作下游模型的输入特征*。
 
-ELMo（[Peters et al., 2017](https://arxiv.org/abs/1705.00108v1)）从不同的维度对传统的词嵌入研究进行了概括。他们建议从语言模型中提取上下文敏感的特征。在将上下文嵌入与特定于任务的架构集成时，ELMo 为几个主要的 NLP 标准提供了最先进的技术（[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2))，包括在 SQuAD 上的问答（[Rajpurkar et al., 2016](https://arxiv.org/abs/1606.05250v3)），情感分析（[Socher et al., 2013](https://nlp.stanford.edu/sentiment/)），和命名实体识别（[jong Kim Sang and De Meul-der, 2003](http://www.oalib.com/paper/4018980)）。
+**ELMo**（[Peters et al., 2017](https://arxiv.org/abs/1705.00108v1)）从不同的维度对传统的词嵌入研究进行了概括。**他们建议从语言模型中提取上下文敏感的特征**。在将上下文嵌入与特定于任务的架构集成时，ELMo 为几个主要的 NLP 标准提供了最先进的技术（[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2))，包括在 SQuAD 上的问答（[Rajpurkar et al., 2016](https://arxiv.org/abs/1606.05250v3)），情感分析（[Socher et al., 2013](https://nlp.stanford.edu/sentiment/)），和命名实体识别（[jong Kim Sang and De Meul-der, 2003](http://www.oalib.com/paper/4018980)）。
 
 ### 2.2 基于微调的方法
-语言模型迁移学习（LMs）的一个最新趋势是，在对受监督的下游任务的模型进行微调之前，先对 LM 目标上的一些模型构造进行预训练（[Dai and Le, 2015](http://papers.nips.cc/paper/5949-semi-supervised-sequence-learning)；[Howard and Ruder, 2018](https://arxiv.org/abs/1801.06146v5)；[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）。这些方法的优点是只有很少的参数需要从头开始学习。至少部分得益于这一优势，OpenAI GPT （[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）在 GLUE 基准测试的许多句子级任务上取得了此前最先进的结果（[Wang et al.(2018)](https://arxiv.org/abs/1804.07461v2))。
+语言模型迁移学习（LMs）的一个最新趋势是，**在对受监督的下游任务的模型进行微调之前，先对 LM 目标上的一些模型构造进行预训练**（[Dai and Le, 2015](http://papers.nips.cc/paper/5949-semi-supervised-sequence-learning)；[Howard and Ruder, 2018](https://arxiv.org/abs/1801.06146v5)；[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）。这些方法的优点是只有很少的参数需要从头开始学习。至少部分得益于这一优势，OpenAI GPT （[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）在 GLUE 基准测试的许多句子级任务上取得了此前最先进的结果（[Wang et al.(2018)](https://arxiv.org/abs/1804.07461v2))。
 
 ### 2.3 从有监督的数据中迁移学习
-虽然无监督预训练的优点是可用的数据量几乎是无限的，但也有研究表明，从具有大数据集的监督任务中可以进行有效的迁移，如自然语言推理（[Con-neau et al., 2017](https://www.aclweb.org/anthology/D17-1070)）和机器翻译（[McCann et al., 2017](https://einstein.ai/static/images/pages/research/cove/McCann2017LearnedIT.pdf)）。在NLP之外，计算机视觉研究也证明了从大型预训练模型中进行迁移学习的重要性，有一个有效的方法可以微调在 ImageNet 上预训练的模型（[Deng et al., 2009](https://ieeexplore.ieee.org/document/5206848)；[Yosinski et al., 2014](https://arxiv.org/abs/1411.1792v1)）
+虽然无监督预训练的优点是可用的数据量几乎是无限的，但也有研究表明，**从具有大数据集的监督任务中可以进行有效的迁移**，如 *自然语言推理*（[Con-neau et al., 2017](https://www.aclweb.org/anthology/D17-1070)）和 *机器翻译*（[McCann et al., 2017](https://einstein.ai/static/images/pages/research/cove/McCann2017LearnedIT.pdf)）。在NLP之外，计算机视觉研究也证明了从大型预训练模型中进行迁移学习的重要性，有一个有效的方法可以在 ImageNet 上微调预训练的模型（[Deng et al., 2009](https://ieeexplore.ieee.org/document/5206848)；[Yosinski et al., 2014](https://arxiv.org/abs/1411.1792v1)）
 
 ## 3 BERT
 本节将介绍 BERT 及其具体实现。首先介绍了 BERT 模型结构和输入表示。然后我们在 3.3 节介绍本文的核心创新——预训练任务。在 3.4 和 3.5 节中分别详细介绍了预训练过程和微调模型过程。最后，在 3.6 节中讨论了 BERT 和 OpenAI GPT 之间的区别。
 
 ### 3.1 模型结构
-BERT 的模型结构是一个基于 [Vaswani et al.(2017)](https://arxiv.org/abs/1706.03762v5)  描述的原始实现的多层双向 Transformer 编码器，并且 Transformer 编码器发布在 [tensor2tensor](https://github.com/tensorflow/tensor2tensor) 代码库中。由于最近 Transformer 的使用已经非常普遍，而且我们的实现与最初的实现实际上是相同的，所以我们将省略对模型结构的详尽的背景描述，并向读者推荐 [Vaswani et al.(2017)](https://arxiv.org/abs/1706.03762v5) 以及优秀的指南，如“[带注释的 Transformer](http://nlp.seas.harvard.edu/2018/04/03/attention.html)”。
+BERT 的模型结构是一个原始实现的基于 [Vaswani et al.(2017)](https://arxiv.org/abs/1706.03762v5)  所描述的多层双向 Transformer 编码器，并且 Transformer 编码器发布在 [tensor2tensor](https://github.com/tensorflow/tensor2tensor) 代码库中。由于最近 Transformer 的使用已经非常普遍，而且我们的实现与最初的实现实际上是相同的，所以我们将省略对模型结构的详尽的背景描述，并向读者推荐 [Vaswani et al.(2017)](https://arxiv.org/abs/1706.03762v5) 以及相关的优秀指南，如“[带注释的 Transformer](http://nlp.seas.harvard.edu/2018/04/03/attention.html)”。
 
-在这项工作中，我们表示层的数量(即，Transformer 块)为 $L$，隐藏尺寸为 $H$，自注意头的个数为 $A$。在所有例子中，我们将前馈/过滤器的大小设置为 $4H$，即当 $H = 768$ 时是 $3072$；当 $H = 1024$ 是 $4096$。我们主要分析两个模型大小的结果:
+在这项工作中，我们将层的数量(即，Transformer 块)表示为 $L$，隐藏尺寸为 $H$，自注意头的个数为 $A$。在所有例子中，我们将前馈/过滤器的大小设置为 $4H$，即当 $H = 768$ 时是 $3072$；当 $H = 1024$ 是 $4096$。我们主要分析两个模型大小的结果:
 + $BERT_{BASE}: L=12, H=768, A=12, Total Parameters=110M$
 + $BERT_{LARGE}: L=24, H=1024, A=16, Total Parameters=340M$
 
-为了方便比较，$BERT_{BASE}$ 选择了与 OpenAI GPT 一样的模型大小。然而，重要的是，BERT Transformer 使用的是双向的自注意力，而 GPT Transformer 使用的是受限的自注意力，每个标记只能关注其左边的语境。我们注意到，在文献中，双向 Transformer 通常被称为“Transformer 编码器”，而只有标记左侧语境的版本由于可以用于文本生成而被重新定义为“Transformer 解码器”。BERT、OpenAI GPT 和 ELMo 之间的比较如图 1 所示。
+为了方便比较，$BERT_{BASE}$ 选择了与 OpenAI GPT 一样的模型尺寸。然而，重要的是，**BERT Transformer 使用的是双向的自注意力**，而 **GPT Transformer 使用的是受限的自注意力，每个标记只能关注其左边的语境**。我们注意到，在文献中，双向 Transformer 通常被称为“Transformer 编码器”，而只有标记左侧语境的版本由于可以用于文本生成而被重新定义为“Transformer 解码器”。BERT、OpenAI GPT 和 ELMo 之间的比较如图 1 所示。
 
 ![](Bidirectional_Encoder_Representations_Transformers翻译/figure_1.png)
 > 图 1：预训练模型结构的不同。BERT 使用双向 Transformer。OpenAI GPT 使用 从左到右的 Transformer。ELMo 使用独立训练的从左到右和从右到左的 LSTM 的连接来为下游任务生成特征。其中，只有 BERT 表示在所有层中同时受到左右语境的制约。
 
 ### 3.2 输入表示
-我们的输入表示能够在一个标记序列中清楚地表示单个文本句子或一对文本句子(例如，[Question, Answer])。（注释：在整个工作中，“句子”可以是连续的任意跨度的文本，而不是实际语言意义上的句子。“序列”是指输入到 BERT 的标记序列，它可以是单个句子，也可以是两个句子组合在一起。）通过把给定标记对应的标记嵌入、句子嵌入和位置嵌入求和来构造其输入表示。图 2 给出了输入表示的可视化表示。
+我们的输入表示能够在一个标记序列中清楚地表示单个文本句子或一对文本句子(例如，[Question, Answer])。（注释：在整个工作中，“句子”可以是连续的任意跨度的文本，而不是实际语言意义上的句子。“序列”是指输入到 BERT 的标记序列，它可以是单个句子，也可以是两个句子组合在一起。）**通过把给定标记对应的标记嵌入、句子嵌入和位置嵌入求和来构造其输入表示**。图 2 给出了输入表示的可视化表示。
 细节是:
-+ 我们使用含 3 万个标记词语的 WordPiece 嵌入（[Wu et al., 2016](https://arxiv.org/abs/1609.08144v2)）。我们用 ## 表示拆分的单词片段。
-+ 我们使用学习到的位置嵌入，支持的序列长度最长可达 512 个标记。
-+ 每个序列的第一个标记始终是特殊分类嵌入（[CLS]）。该特殊标记对应的最终隐藏状态（即，Transformer 的输出）被用作分类任务中该序列的总表示。对于非分类任务，这个最终隐藏状态将被忽略。
-+ 句子对被打包在一起形成一个单独的序列。我们用两种方法区分这些句子。方法一，我们用一个特殊标记（[SEP]）将它们分开。方法二，我们给第一个句子的每个标记添加一个可训练的句子 A 嵌入，给第二个句子的每个标记添加一个可训练的句子 B 嵌入。
-+ 对于单句输入，我们只使用句子 A 嵌入。
++ 我们使用含 3 万个标记词语的 WordPiece 嵌入（[Wu et al., 2016](https://arxiv.org/abs/1609.08144v2)）。**我们用 ## 表示拆分的单词片段**。
++ 我们**使用学习到的位置嵌入**，支持的序列长度最长可达 512 个标记。
++ **每个序列的第一个标记始终是特殊分类嵌入（[CLS]）**。该特殊标记对应的最终隐藏状态（即，Transformer 的输出）被用作分类任务中该序列的总表示。对于非分类任务，这个最终隐藏状态将被忽略。
++ **句子对被打包在一起形成一个单独的序列。我们用两种方法区分**这些句子。方法一，*我们用一个特殊标记（[SEP]）将它们分开*。方法二，*我们给第一个句子的每个标记添加一个可训练的句子 A 嵌入，给第二个句子的每个标记添加一个可训练的句子 B 嵌入*。
++ **对于单句输入，我们只使用句子 A 嵌入**。
 
 ![](Bidirectional_Encoder_Representations_Transformers翻译/figure_2.png)
 > 图 2：BERT 的输入表示。输入嵌入是标记嵌入（词嵌入）、句子嵌入和位置嵌入的总和。
@@ -69,9 +69,9 @@ BERT 的模型结构是一个基于 [Vaswani et al.(2017)](https://arxiv.org/abs
 #### 3.3.1 任务一#：遮蔽语言模型
 直觉上，我们有理由相信，深度双向模型严格来说比从左到右模型或从左到右模型结合从右到左模型的浅层连接更强大。不幸的是，标准条件语言模型只能从左到右或从右到左进行训练，因为双向条件作用将允许每个单词在多层上下文中间接地“看到自己”。
 
-为了训练深度双向表示，我们采用了一种简单的方法，即随机遮蔽一定比例的输入标记，然后仅预测那些被遮蔽的标记。我们将这个过程称为“遮蔽语言模型”（MLM），尽管在文献中它通常被称为完形填词任务（[Taylor, 1953](https://www.researchgate.net/publication/232539913_Cloze_Procedure_A_New_Tool_For_Measuring_Readability)）。在这种情况下，就像在标准语言模型中一样，与遮蔽标记相对应的最终隐藏向量被输入到与词汇表对应的输出 softmax 中（也就是要把被遮蔽的标记对应为词汇表中的一个词语）。在我们所有的实验中，我们在每个序列中随机遮蔽 15% 的标记。与去噪的自动编码器（[Vincent et al., 2008](https://www.researchgate.net/publication/221346269_Extracting_and_composing_robust_features_with_denoising_autoencoders)）不同的是，我们只是让模型预测被遮蔽的标记，而不是要求模型重建整个输入。
+**为了训练深度双向表示，我们采用了一种简单的方法，即随机遮蔽一定比例的输入标记，然后仅预测那些被遮蔽的标记**。我们将这个过程称为“遮蔽语言模型”（MLM），尽管在文献中它通常被称为完形填词任务（[Taylor, 1953](https://www.researchgate.net/publication/232539913_Cloze_Procedure_A_New_Tool_For_Measuring_Readability)）。在这种情况下，就像在标准语言模型中一样，与遮蔽标记相对应的最终隐藏向量被输入到与词汇表对应的输出 softmax 中（也就是要把被遮蔽的标记对应为词汇表中的一个词语）。在我们所有的实验中，我们在每个序列中随机遮蔽 15% 的标记。与去噪的自动编码器（[Vincent et al., 2008](https://www.researchgate.net/publication/221346269_Extracting_and_composing_robust_features_with_denoising_autoencoders)）不同的是，我们只是让模型预测被遮蔽的标记，而不是要求模型重建整个输入。
 
-虽然这确实允许我们获得一个双向预训练模型，但这种方法有两个缺点。第一个缺点是，我们在预训练和微调之间造成了不匹配，因为 [MASK] 标记在微调期间从未出现过。为了缓和这种情况，我们并不总是用真的用 [MASK] 标记替换被选择的单词。而是，训练数据生成器随机选择 15% 的标记，例如，在my dog is hairy 这句话中，它选择 hairy。然后执行以下步骤:
+虽然这确实允许我们获得一个双向预训练模型，但**这种方法有两个缺点**。**第一个缺点**是，我们在预训练和微调之间造成了不匹配，因为 [MASK] 标记在微调期间从未出现过。为了缓和这种情况，我们并不总是用真的用 [MASK] 标记替换被选择的单词。而是，训练数据生成器随机选择 15% 的标记，例如，在my dog is hairy 这句话中，它选择 hairy。然后执行以下步骤:
 + 数据生成不会总是用 [MASK] 替换被选择的单词，而是执行以下操作:
 + 80% 的情况下：用 [MASK] 替换被选择的单词，例如，my dog is hairy → my dog is [MASK]
 + 10% 的情况下：用一个随机单词替换被选择的单词，例如，my dog is hairy → my dog is apple
@@ -79,17 +79,17 @@ BERT 的模型结构是一个基于 [Vaswani et al.(2017)](https://arxiv.org/abs
 
 Transformer 编码器不知道它将被要求预测哪些单词，或者哪些单词已经被随机单词替换，因此它被迫保持每个输入标记的分布的上下文表示。另外，因为随机替换只发生在 1.5% 的标记（即，15% 的 10%）这似乎不会损害模型的语言理解能力。
 
-第二个缺点是，使用 Transformer 的每批次数据中只有 15% 的标记被预测，这意味着模型可能需要更多的预训练步骤来收敛。在 5.3 节中，我们证明了 Transformer 确实比从左到右的模型（预测每个标记）稍微慢一点，但是 Transformer 模型的实验效果远远超过了它增加的预训练模型的成本。
+**第二个缺点**是，使用 Transformer 的每批次数据中只有 15% 的标记被预测，这意味着模型可能需要更多的预训练步骤来收敛。在 5.3 节中，我们证明了 Transformer <u>确实比从左到右的模型（预测每个标记）稍微慢一点</u>，但是 Transformer 模型的实验效果远远超过了它增加的预训练模型的成本。
 
 #### 3.3.2 任务2#：下一句预测
-许多重要的下游任务，如问题回答（QA）和自然语言推理（NLI），都是建立在理解两个文本句子之间的关系的基础上的，而这并不是语言建模直接捕捉到的。为了训练一个理解句子关系的模型，我们预训练了一个下一句预测的二元分类任务，这个任务可以从任何单语语料库中简单地归纳出来。具体来说，在为每个训练前的例子选择句子 A 和 B 时，50% 的情况下 B 是真的在 A 后面的下一个句子，50% 的情况下是来自语料库的随机句子。比如说:
+许多重要的下游任务，如问题回答（QA）和自然语言推理（NLI），都是建立在理解两个文本句子之间的关系的基础上的，而这并不是语言建模直接捕捉到的。为了训练一个理解句子关系的模型，我们预训练了一个下一句预测的二元分类任务，这个任务可以从任何单语语料库中简单地归纳出来。具体来说，**在为每个训练前的例子选择句子 A 和 B 时，50% 的情况下 B 是真的在 A 后面的下一个句子，50% 的情况下是来自语料库的随机句子**。比如说:
 
 ![](Bidirectional_Encoder_Representations_Transformers翻译/3_3_2_1.png)
 
 我们完全随机选择不是下一句的句子，最终的预训练模型在这个任务中达到了 97%-98% 的准确率。尽管这个任务很简单，但是我们在 5.1 节中展示了针对此任务的预训练对 QA 和 NLI 都非常有益。
 
 ### 3.4 预训练过程
-预训练过程大体上遵循以往文献中语言模型预训练过程。对于预训练语料库，我们使用 BooksCorpus（800M 单词）（[Zhu et al., 2015](https://arxiv.org/abs/1506.06724v1)）和英语维基百科（2,500M 单词）。对于维基百科，我们只提取文本段落，而忽略列表、表格和标题。为了提取长的连续序列，使用文档级别的语料库，而不是使用像 Billion Word Benchmark （[Chelba et al., 2013](https://arxiv.org/abs/1312.3005v3)）那样使用打乱顺序的句子级别语料库是至关重要的。
+**预训练过程大体上遵循以往文献中语言模型预训练过程**。对于预训练语料库，我们使用 BooksCorpus（800M 单词）（[Zhu et al., 2015](https://arxiv.org/abs/1506.06724v1)）和英语维基百科（2,500M 单词）。对于维基百科，我们只提取文本段落，而忽略列表、表格和标题。*为了提取长的连续序列，使用文档级别的语料库是至关重要的*，而不是使用像 Billion Word Benchmark （[Chelba et al., 2013](https://arxiv.org/abs/1312.3005v3)）那样的打乱顺序的句子级别语料库。
 
 为了生成每个训练输入序列，我们从语料库中采样两段文本，我们将其称为“句子”，尽管它们通常比单个句子长得多（但也可以短一些）。第一个句子添加 A 嵌入，第二个句子添加 B 嵌入。50% 的情况下 B 确实是 A 后面的实际下一句，50% 的情况下它是随机选取的一个的句子，这是为“下一句预测”任务所做的。两句话合起来的长度要小于等于 512 个标记。语言模型遮蔽过程是在使用 WordPiece 序列化句子后，以均匀的 15% 的概率遮蔽标记，不考虑部分词片的影响（那些含有被 WordPiece 拆分，以##为前缀的标记）。
 
@@ -106,7 +106,7 @@ Transformer 编码器不知道它将被要求预测哪些单词，或者哪些�
 +	Learning rate (Adam): 5e-5, 3e-5, 2e-5
 +	Number of epochs: 3, 4
 
-我们还观察到大数据集（例如 100k+ 标记的训练集）对超参数选择的敏感性远远低于小数据集。微调通常非常快，因此只需对上述参数进行完全搜索，并选择在验证集上性能最好的模型即可。
+我们还观察到**大数据集（例如 100k+ 标记的训练集）对超参数选择的敏感性远远低于小数据集**。微调通常非常快，因此只需对上述参数进行完全搜索，并选择在验证集上性能最好的模型即可。
 
 ### 3.6 BERT 和 OpenAI GPT 的比较
 在现有预训练方法中，与 BERT 最相似的是 OpenAI GPT，它在一个大的文本语料库中训练从左到右的 Transformer 语言模型。事实上，BERT 中的许多设计决策都是有意选择尽可能接近 GPT 的，这样两种方法就可以更加直接地进行比较。我们工作的核心论点是，在 3.3 节中提出的两项新的预训练语言模型任务占了实验效果改进的大部分，但是我们注意到 BERT 和 GPT 在如何训练方面还有其他几个不同之处:
@@ -116,7 +116,7 @@ Transformer 编码器不知道它将被要求预测哪些单词，或者哪些�
 + GPT 在每批次含 32,000 词上训练了 1M 步；BERT 在每批次含 128,000 词上训练了 1M 步。
 + GPT 在所有微调实验中学习速率均为 5e-5；BERT 选择特定于任务的在验证集中表现最好的微调学习率。
 
-为了分清楚这些差异的带来的影响，我们在 5.1 节中的进行每一种差异的消融实验表明，大多数的实验效果的改善实际上来自新的预训练任务（遮蔽语言模型和下一句预测任务）。
+为了分清楚这些差异的带来的影响，我们在 5.1 节中的进行每一种差异的消融实验表明，*大多数的实验效果的改善实际上来自新的预训练任务（遮蔽语言模型和下一句预测任务）*。
 
 
 ![](Bidirectional_Encoder_Representations_Transformers翻译/figure_3.png)
@@ -126,7 +126,7 @@ Transformer 编码器不知道它将被要求预测哪些单词，或者哪些�
 在这一节，我们将展示 BERT 在 11 项自然语言处理任务中的微调结果。
 
 ### 4.1 GLUE 数据集
-通用语言理解评价 (GLUE General Language Understanding Evaluation) 基准（[Wang et al.(2018)](https://arxiv.org/abs/1804.07461v2)）是对多种自然语言理解任务的集合。大多数 GLUE 数据集已经存在多年，但 GLUE 的用途是（1）以分离的训练集、验证集和测试集的标准形式发布这些数据集；并且（2）建立一个评估服务器来缓解评估不一致和过度拟合测试集的问题。GLUE 不发布测试集的标签，用户必须将他们的预测上传到 GLUE 服务器进行评估，并对提交的数量进行限制。
+**通用语言理解评价** (GLUE General Language Understanding Evaluation) 基准（[Wang et al.(2018)](https://arxiv.org/abs/1804.07461v2)）是对多种自然语言理解任务的集合。大多数 GLUE 数据集已经存在多年，但 GLUE 的用途是（1）以分离的训练集、验证集和测试集的标准形式发布这些数据集；并且（2）建立一个评估服务器来缓解评估不一致和过度拟合测试集的问题。GLUE 不发布测试集的标签，用户必须将他们的预测上传到 GLUE 服务器进行评估，并对提交的数量进行限制。
 
 GLUE 基准包括以下数据集，其描述最初在 [Wang et al.(2018)](https://arxiv.org/abs/1804.07461v2)中总结:
 
@@ -216,12 +216,12 @@ $$P_i=\dfrac{e^{V \cdot C_i}}{\sum_j^4 e^{S \cdot C_j}}$$
 > 表 4：SWAG 验证集和测试集准确率。测试结果由 SWAG 作者对隐藏的标签进行评分。人类的表现是用 100 个样本来衡量的，正如 SWAG 论文中描述的那样。
 
 ## 5. 消融研究（Ablation Studies）
-虽然我们已经证明了非常强有力的实证结果，但到目前为止提出的结果并没有提现出 BERT 框架的每个部分具体的贡献。在本节中，我们对 BERT 的许多方面进行了消融实验，以便更好地理解每个部分的相对重要性。
+虽然我们已经证明了非常强有力的实证结果，但到目前为止提出的结果并没有体现出 BERT 框架的每个部分具体的贡献。在本节中，我们对 BERT 的许多方面进行了消融实验，以便更好地理解每个部分的相对重要性。
 
 ### 5.1 预训练任务的影响
 我们的核心观点之一是，与之前的工作相比，BERT 的深层双向性（通过遮蔽语言模型预训练）是最重要的改进。为了证明这一观点，我们评估了两个新模型，它们使用与 $BERT_{BASE}$ 完全相同的预训练数据、微调方案和 Transformer 超参数：
 1. No NSP：模型使用“遮蔽语言模型”（MLM）但是没有“预测下一句任务”（NSP）。
-2. LTR & No NSP：模型使用一个从左到右（LTR）的语言模型，而不是遮蔽语言模型。在这种情况下，我们预测每个输入词，不应用任何遮蔽。在微调中也应用了仅限左的约束，因为我们发现使用仅限左的上下文进行预训练和使用双向上下文进行微调总是比较糟糕。此外，该模型未经预测下一句任务的预训练。这与OpenAI GPT有直接的可比性，但是使用更大的训练数据集、输入表示和微调方案。
+2. LTR & No NSP：模型使用一个从左到右（LTR）的语言模型，而不是遮蔽语言模型。在这种情况下，我们预测每个输入词，不应用任何遮蔽。在微调中也应用了仅限左的约束，因为我们发现使用仅限左的上下文进行预训练和使用双向上下文进行微调总是比较糟糕。此外，该模型未经预测下一句任务的预训练。这与OpenAI GPT有直接的可比性，但使用了更大的训练数据集、输入表示和微调方案。
 
 结果如表 5 所示。我们首先分析了 NSP 任务所带来的影响。我们可以看到去除 NSP 对 QNLI、MNLI 和 SQuAD 的表现造成了显著的伤害。这些结果表明，我们的预训练方法对于获得先前提出的强有力的实证结果是至关重要的。
 
@@ -229,7 +229,7 @@ $$P_i=\dfrac{e^{V \cdot C_i}}{\sum_j^4 e^{S \cdot C_j}}$$
 
 为了增强 LTR 系统，我们尝试在其上添加一个随机初始化的 BiLSTM 来进行微调。这确实大大提高了 SQuAD 的成绩，但是结果仍然比预训练的双向模型表现差得多。它还会损害所有四个 GLUE 任务的性能。
 
-我们注意到，也可以培训单独的 LTR 和 RTL 模型，并将每个标记表示为两个模型表示的连接，就像 ELMo 所做的那样。但是：（a）这是单个双向模型参数的两倍大小；（b）这对于像 QA 这样的任务来说是不直观的，因为 RTL 模型无法以问题为条件确定答案；（c）这比深层双向模型的功能要弱得多，因为深层双向模型可以选择使用左上下文或右上下文。
+我们注意到，也可以训练单独的 LTR 和 RTL 模型，并将每个标记表示为两个模型表示的连接，就像 ELMo 所做的那样。但是：（a）这是单个双向模型参数的两倍大小；（b）这对于像 QA 这样的任务来说是不直观的，因为 RTL 模型无法以问题为条件确定答案；（c）这比深层双向模型的功能要弱得多，因为深层双向模型可以选择使用左上下文或右上下文。
 
 ![](Bidirectional_Encoder_Representations_Transformers翻译/table_5.png)
 > 表 5：在预训练任务中使用 $BERT_{BASE}$ 模型进行消融实验。“No NSP”表示不进行下一句预测任务来训练模型。“LTR & No NSP”表示就像 OpenAI GPT 一样，使用从左到右的语言模型不进行下一句预测任务来训练模型。“+ BiLSTM”表示在“LTR & No NSP”模型微调时添加一个随机初始化的 BiLSTM 层。
@@ -239,7 +239,7 @@ $$P_i=\dfrac{e^{V \cdot C_i}}{\sum_j^4 e^{S \cdot C_j}}$$
 
 选定 GLUE 任务的结果如表 6 所示。在这个表中，我们报告了 5 次在验证集上的微调的随机重启的平均模型准确度。我们可以看到，更大的模型在所选 4 个数据集上都带来了明显的准确率上升，甚至对于只有 3600 个训练数据的 MRPC 来说也是如此，并且与预训练任务有很大的不同。也许令人惊讶的是，相对于现有文献，我们能够在现有的模型基础上实现如此显著的改进。例如，[Vaswani et al.(2017)](https://arxiv.org/abs/1706.03762v5) 研究的最大 Transformer 为(L=6, H=1024, A=16)，编码器参数为 100M，我们所知的文献中的最大 Transformer 为(L=64, H=512, A=2)，参数为235M（[Al-Rfou et al., 2018](https://arxiv.org/abs/1808.04444v1)）。相比之下，$BERT_{BASE}$ 含有 110M 参数而 $BERT_{LARGE}$ 含有 340M 参数。
 
-多年来人们都知道，增加模型的大小将持续提升在大型任务(如机器转换和语言建模)上的的表现，表 6 所示的由留存训练数据（held-out traing data）计算的语言模型的困惑度（perplexity）。然而，我们相信，这是第一次证明，如果模型得到了足够的预训练，那么将模型扩展到极端的规模也可以在非常小的任务中带来巨大的改进。
+多年来人们都知道，增加模型的大小将持续提升在大型任务(如机器转换和语言建模)上的的表现，表 6 所示的由留存训练数据（held-out traing data）计算的语言模型的困惑度（perplexity）。然而，我们相信，这是第一次证明，**如果模型得到了足够的预训练，那么将模型扩展到极端的规模也可以在非常小的任务中带来巨大的改进**。
 
 ![](Bidirectional_Encoder_Representations_Transformers翻译/table_6.png)
 > 表 6：调整 BERT 的模型大小。#L = 层数；#H = 隐藏维度大小；#A = 注意力头的个数。“LM (ppl)”表示遮蔽语言模型在预留训练数据上的困惑度。
@@ -267,7 +267,7 @@ $$P_i=\dfrac{e^{V \cdot C_i}}{\sum_j^4 e^{S \cdot C_j}}$$
 
 
 ## 6. 结论
-最近，由于使用语言模型进行迁移学习而取得的实验提升表明，丰富的、无监督的预训练是许多语言理解系统不可或缺的组成部分。特别是，这些结果使得即使是低资源（少量标签的数据集）的任务也能从非常深的单向结构模型中受益。我们的主要贡献是将这些发现进一步推广到深层的双向结构，使同样的预训练模型能够成功地广泛地处理 NLP 任务。
+最近，由于使用语言模型进行迁移学习而取得的实验提升表明，**丰富的、无监督的预训练是许多语言理解系统不可或缺的组成部分**。特别是，这些结果使得即使是低资源（少量标签的数据集）的任务也能从非常深的单向结构模型中受益。我们的主要贡献是将这些发现进一步推广到深层的双向结构，使同样的预训练模型能够成功地广泛地处理 NLP 任务。
 
 虽然这些实证结果很有说服力，在某些情况下甚至超过了人类的表现，但未来重要的工作是研究 BERT 可能捕捉到的或不捕捉到的语言现象。
 
