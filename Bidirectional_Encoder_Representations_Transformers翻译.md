@@ -5,14 +5,14 @@ Google AI Language
 
 
 ## 摘要
-我们提出了一种新的称为 BERT 的语言表示模型，BERT 代表来自 Transformer 的双向编码器表示（**B**idirectional **E**ncoder **R**epresentations from **T**ransformers）。不同于最近的语言表示模型（[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2)，[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）， BERT 旨在通过联合调节所有层中的左右上下文来预训练深度双向表示。因此，只需要一个额外的输出层，就可以对预训练的 BERT 表示进行微调，从而为广泛的任务（比如回答问题和语言推断任务）创建最先进的模型，而无需对特定于任务进行大量模型结构的修改。
+我们提出了一种新的称为 BERT 的语言表示模型，BERT 代表**来自 Transformer 的双向编码器表示**（**B**idirectional **E**ncoder **R**epresentations from **T**ransformers）。不同于最近的语言表示模型（[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2)，[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）， BERT 旨在**通过联合调节所有层中的左右上下文来预训练深度双向表示**。因此，只需要一个额外的输出层，就可以对预训练的 BERT 表示进行微调，从而为广泛的任务（比如回答问题和语言推断任务）创建最先进的模型，而无需对特定于任务进行大量模型结构的修改。
 
 BERT 的概念很简单，但实验效果很强大。它刷新了 11 个 NLP 任务的当前最优结果，包括将 GLUE 基准提升至 80.4%（7.6% 的绝对改进）、将 MultiNLI 的准确率提高到 86.7%（5.6% 的绝对改进），以及将 SQuAD v1.1 的问答测试 F1 得分提高至 93.2 分（提高 1.5 分）——比人类表现还高出 2 分。
 
 ## 1. 介绍
 语言模型预训练可以显著提高许多自然语言处理任务的效果（[Dai and Le, 2015](http://papers.nips.cc/paper/5949-semi-supervised-sequence-learning)；[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2)；[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)；[Howard and Ruder, 2018](https://arxiv.org/abs/1801.06146v5)）。这些任务包括句子级任务，如自然语言推理（[Bow-man et al., 2015](https://arxiv.org/abs/1508.05326v1)；[Williams et al., 2018](https://arxiv.org/abs/1704.05426v4)）和释义（[Dolan and Brockett, 2005](https://www.researchgate.net/publication/228613673_Automatically_constructing_a_corpus_of_sentential_paraphrases)），目的是通过对句子的整体分析来预测句子之间的关系，以及标记级任务，如命名实体识别（[Tjong Kim Sang and De Meulder, 2003](http://www.oalib.com/paper/4018980)）和 SQuAD 问答（[Rajpurkar et al., 2016](https://arxiv.org/abs/1606.05250v3)），模型需要在标记级生成细粒度的输出。
 
-现有的两种方法可以将预训练好的语言模型表示应用到下游任务中：基于特征的和微调。基于特征的方法，如 ELMo （[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2))，使用特定于任务的模型结构，其中包含预训练的表示作为附加特特征。微调方法，如生成预训练 Transformer  (OpenAI GPT) （[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）模型，然后引入最小的特定于任务的参数，并通过简单地微调预训练模型的参数对下游任务进行训练。在之前的工作中，两种方法在预训练任务中都具有相同的目标函数，即使用单向的语言模型来学习通用的语言表达。
+现有的两种方法可以将预训练好的语言模型表示应用到下游任务中：**基于特征**的和**微调**。**基于特征的方法**，如 <u>ELMo</u> （[Peters et al., 2018](https://arxiv.org/abs/1802.05365v2))，使用特定于任务的模型结构，其中包含预训练的表示作为附加特特征。**微调方法**，如<u>生成预训练 Transformer  (OpenAI GPT) </u>（[Radford et al., 2018](https://blog.openai.com/language-unsupervised/)）模型，然后引入最小的特定于任务的参数，并通过简单地微调预训练模型的参数对下游任务进行训练。在之前的工作中，两种方法在预训练任务中都具有相同的目标函数，即<u>使用单向的语言模型来学习通用的语言表达</u>。
 
 我们认为，当前的技术严重地限制了预训练表示的效果，特别是对于微调方法。主要的局限性是标准语言模型是单向的，这就限制了可以在预训练期间可以使用的模型结构的选择。例如，在 OpenAI GPT 中，作者使用了从左到右的模型结构，其中每个标记只能关注 Transformer 的自注意层中该标记前面的标记（[Williams et al., 2018](https://arxiv.org/abs/1704.05426v4)）。这些限制对于句子级别的任务来说是次优的（还可以接受），但当把基于微调的方法用来处理标记级别的任务（如 SQuAD 问答）时可能会造成不良的影响（[Rajpurkar et al., 2016](https://arxiv.org/abs/1606.05250v3)），因为在标记级别的任务下，从两个方向分析上下文是至关重要的。
 
